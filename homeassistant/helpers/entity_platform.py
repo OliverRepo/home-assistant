@@ -8,6 +8,9 @@ from homeassistant.core import callback, valid_entity_id, split_entity_id
 from homeassistant.exceptions import HomeAssistantError, PlatformNotReady
 from homeassistant.util.async_ import run_callback_threadsafe, run_coroutine_threadsafe
 
+from .device_registry import DeviceRegistry
+from .entity import Entity
+from .entity_registry import EntityRegistry, DISABLED_INTEGRATION
 from .event import async_track_time_interval, async_call_later
 
 
@@ -261,7 +264,11 @@ class EntityPlatform:
         )
 
     async def _async_add_entity(
-        self, entity, update_before_add, entity_registry, device_registry
+        self,
+        entity: Entity,
+        update_before_add: bool,
+        entity_registry: EntityRegistry,
+        device_registry: DeviceRegistry,
     ):
         """Add an entity to the platform."""
         if entity is None:
@@ -333,6 +340,10 @@ class EntityPlatform:
                 if device:
                     device_id = device.id
 
+            disabled_by: Optional[str] = None
+            if not entity.entity_registry_enabled_default:
+                disabled_by = DISABLED_INTEGRATION
+
             entry = entity_registry.async_get_or_create(
                 self.domain,
                 self.platform_name,
@@ -341,6 +352,7 @@ class EntityPlatform:
                 config_entry_id=config_entry_id,
                 device_id=device_id,
                 known_object_ids=self.entities.keys(),
+                disabled_by=disabled_by,
             )
 
             if entry.disabled:
